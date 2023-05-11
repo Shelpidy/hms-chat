@@ -67,4 +67,4 @@ CommodityUser.init(
     { sequelize }
 );
 
-export default CommodityUser
+export default CommodityUser;
