@@ -5,14 +5,14 @@ import { ChatReturnType, RUser } from "../types/types";
 
 const router = express.Router();
 
-router.get("/chats/:roomId/:pageNumber", async (req: Request, res: Response) => {
+router.get("/chats/:roomId/:pageNumber/:numberOfRecord", async (req: Request, res: Response) => {
     try {
-        let {roomId,pageNumber} = req.params;
-        let numberOfData = 20
-        let start = (Number(pageNumber) - 1)* numberOfData
-        let end = start + numberOfData
+        let {roomId,pageNumber,numberOfRecord:numRec} = req.params;
+        let numberOfRecord = Number(numRec)
+        let start = (Number(pageNumber) - 1)* numberOfRecord
 
-        const {rows:chats,count} = await CommodityChat.findAndCountAll({ where: { roomId },order:[["id","DESC"]],limit:start,offset:end});
+
+        const {rows:chats,count} = await CommodityChat.findAndCountAll({ where: { roomId },order:[["id","DESC"]],limit:numberOfRecord,offset:start});
         const formattedChats = await Promise.all(
             chats.map(async (chat) => {
                 const user: RUser = {
@@ -49,7 +49,7 @@ router.get("/chats/:roomId/:pageNumber", async (req: Request, res: Response) => 
                 return formattedChat;
             })
         );
-        res.status(200).json(formattedChats);
+        res.status(200).json({chats:formattedChats,count});
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: "Server Error" });
