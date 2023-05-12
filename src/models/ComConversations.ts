@@ -21,7 +21,7 @@ CommodityConversation.init(
             onUpdate: "CASCADE",
             onDelete: "CASCADE",
         },
-        recipientId: {
+        receipientId: {
             type: DataTypes.INTEGER,
             allowNull: false,
             references: {
@@ -34,11 +34,12 @@ CommodityConversation.init(
         lastText: {
             type: DataTypes.STRING,
         },
-        recipientReadStatus: {
+        receipientReadStatus: {
             type: DataTypes.BOOLEAN,
         },
         roomId: {
             type: DataTypes.INTEGER,
+            unique: true,
         },
         numberOfUnreadText: {
             type: DataTypes.INTEGER,

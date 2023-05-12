@@ -27,6 +27,9 @@ CommodityUserStatus.init(
         online: {
             type: DataTypes.BOOLEAN,
         },
+        onChatScreen: {
+            type: DataTypes.BOOLEAN,
+        },
         reading: {
             type: DataTypes.BOOLEAN,
         },

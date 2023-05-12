@@ -36,6 +36,12 @@ CommodityChat.init(
         },
         roomId: {
             type: DataTypes.INTEGER,
+            references: {
+                model: "CommodityConversations",
+                key: "roomId",
+            },
+            onUpdate: "CASCADE",
+            onDelete: "CASCADE",
         },
         sent: {
             type: DataTypes.BOOLEAN,
