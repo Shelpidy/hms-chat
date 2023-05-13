@@ -34,6 +34,7 @@ socketIO.on("connection", async (socket) => {
     console.log("Client connected");
     let roomId = socket.handshake.query.roomId;
     let userId = socket.handshake.query.userId;
+    let convId = socket.handshake.query.convId;
     if (roomId) {
         /// connect or join a room if users click on the chat button on the frontend///////////////
         socket.join(String(roomId));
@@ -56,7 +57,7 @@ socketIO.on("connection", async (socket) => {
         }
     }
 
-    if (userId && roomId) {
+    if (userId && roomId && !convId) {
         try {
             let status = await CommodityUserStatus.findOne({
                 where: { userId },
@@ -124,11 +125,10 @@ socketIO.on("connection", async (socket) => {
                 pending: true,
             });
 
-            const conv = await CommodityConversation.findOne({
+            let conv = await CommodityConversation.findOne({
                 where: { roomId },
             });
             if (conv) {
-                conv.setDataValue("numberOfUnreadText", 0);
                 let initialSenderId = conv.getDataValue("senderId");
                 let initialreceipientId = conv.getDataValue("receipientId");
                 let currentSenderStatus = await CommodityUserStatus.findOne({
@@ -140,11 +140,20 @@ socketIO.on("connection", async (socket) => {
                 // check if the receiver have not opened the chat screen or is not on the chat screen
 
                 conv.setDataValue("receipientReadStatus", false);
+                let unReadTextNo = conv.getDataValue("numberOfUnreadText");
                 if (initialSenderId == msgData.senderId) {
+                    console.log("From the same sender");
+
+                    console.log("No of unread", unReadTextNo);
                     if (
                         !currentReceipientStatus?.getDataValue("onChatScreen")
                     ) {
-                        conv.increment("numberOfUnreadText", { by: 1 });
+                        if (unReadTextNo) {
+                            conv.increment("numberOfUnreadText", { by: 1 });
+                        } else {
+                            conv.setDataValue("numberOfUnreadText", 1);
+                        }
+
                         conv.setDataValue("receipientReadStatus", false);
                     } else {
                         conv.setDataValue("numberOfUnreadText", null);
@@ -152,7 +161,11 @@ socketIO.on("connection", async (socket) => {
                     }
                 } else {
                     if (!currentSenderStatus?.getDataValue("onChatScreen")) {
-                        conv.increment("numberOfUnreadText", { by: 1 });
+                        if (unReadTextNo) {
+                            conv.increment("numberOfUnreadText", { by: 1 });
+                        } else {
+                            conv.setDataValue("numberOfUnreadText", 1);
+                        }
                     } else {
                         conv.setDataValue("numberOfUnreadText", null);
                         conv.setDataValue("receipientReadStatus", true);
@@ -163,7 +176,7 @@ socketIO.on("connection", async (socket) => {
 
                 conv.setDataValue("lastText", msgData.text);
                 // conv.setDataValue("senderId",msgData.senderId)
-                await conv.save();
+                conv = await conv.save();
             }
 
             const recipient = await CommodityUser.findByPk(
@@ -191,6 +204,9 @@ socketIO.on("connection", async (socket) => {
                 socketIO
                     .to(String(roomId))
                     .emit(String(msgData.roomId), chatMessage);
+                socket
+                    .to(String(roomId))
+                    .emit("conversation", conv?.dataValues);
             }
 
             // socket.emit('test',JSON.stringify({text:"Welcome to my chat"}))
