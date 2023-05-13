@@ -9,6 +9,7 @@ import {
     responseStatusCode,
 } from "../utils/utils";
 import { Op } from "sequelize";
+import CommodityUserStatus from "../models/ComUserStatus";
 
 const router = express.Router();
 
@@ -106,13 +107,11 @@ router.delete("/chats/:messageId", async (req: Request, res: Response) => {
                     )
                 );
         } else {
-            return res
-                .status(responseStatusCode.BAD_REQUEST)
-                .json(
-                    getResponseBody(responseStatus.SUCCESS, "Delete Failed", {
-                        affectedNumber: deleteRow,
-                    })
-                );
+            return res.status(responseStatusCode.BAD_REQUEST).json(
+                getResponseBody(responseStatus.SUCCESS, "Delete Failed", {
+                    affectedNumber: deleteRow,
+                })
+            );
         }
     } catch (error) {
         console.error(error);
@@ -151,7 +150,7 @@ router.get(
             res.status(responseStatusCode.BAD_REQUEST).json({
                 status: responseStatus.ERROR,
                 data: error,
-                message: "Gettig conversations Request",
+                message: "Getting conversations Failed",
             });
         }
     }
@@ -190,13 +189,11 @@ router.delete("/conversations/:roomId", async (req: Request, res: Response) => {
                     )
                 );
         } else {
-            return res
-                .status(responseStatusCode.BAD_REQUEST)
-                .json(
-                    getResponseBody(responseStatus.SUCCESS, "Delete Failed", {
-                        affectedNumber: deleteRow,
-                    })
-                );
+            return res.status(responseStatusCode.BAD_REQUEST).json(
+                getResponseBody(responseStatus.SUCCESS, "Delete Failed", {
+                    affectedNumber: deleteRow,
+                })
+            );
         }
     } catch (error) {
         console.error(error);
@@ -210,10 +207,10 @@ router.delete("/conversations/:roomId", async (req: Request, res: Response) => {
 
 ////////////////////// READ CONVERSATION ///////////////////////////////
 router.put(
-    "/conversations/read/:roomId",
+    "/conversations/read/:roomId/:userId",
     async (req: Request, res: Response) => {
         try {
-            let roomId = req.params.roomId;
+            let { roomId, userId } = req.params;
             let conversation = await CommodityConversation.findOne({
                 where: { roomId },
             });
@@ -228,8 +225,11 @@ router.put(
                         )
                     );
             }
-            conversation.setDataValue("receipientReadStatus", true);
-            conversation.setDataValue("numberOfUnreadText", null);
+            if (conversation.getDataValue("receipientId") == userId) {
+                conversation.setDataValue("receipientReadStatus", true);
+                conversation.setDataValue("numberOfUnreadText", null);
+            }
+
             await conversation.save();
             res.status(responseStatusCode.ACCEPTED).json(
                 getResponseBody(
@@ -248,5 +248,37 @@ router.put(
         }
     }
 );
+
+////////////////////// GET USER STATUS ////////////////////////////////
+
+router.get("/userstatus/:userId", async (req: Request, res: Response) => {
+    try {
+        let { userId } = req.params;
+        const userStatus = await CommodityUserStatus.findOne({
+            where: { userId },
+        });
+        if (userStatus) {
+            return res
+                .status(responseStatusCode.OK)
+                .json(getResponseBody(responseStatus.SUCCESS, "", userStatus));
+        }
+        return res
+            .status(responseStatusCode.NOT_FOUND)
+            .json(
+                getResponseBody(
+                    responseStatus.ERROR,
+                    `UserStatus for userId ${userId} does not exist`,
+                    {}
+                )
+            );
+    } catch (error) {
+        console.error(error);
+        res.status(responseStatusCode.BAD_REQUEST).json({
+            status: responseStatus.ERROR,
+            data: error,
+            message: "Getting User-Status failed",
+        });
+    }
+});
 
 export default router;
