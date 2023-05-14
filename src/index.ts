@@ -200,7 +200,6 @@ socketIO.on("connection", async (socket) => {
                         avatar: recipient?.getDataValue("profileImage"),
                     },
                 };
-
                 socketIO
                     .to(String(roomId))
                     .emit(String(msgData.roomId), chatMessage);
@@ -264,6 +263,16 @@ socketIO.on("connection", async (socket) => {
                     .to(String(roomId))
                     .emit("typing", updatedStatus.dataValues);
             }
+        } catch (err) {
+            console.log(err);
+        }
+    });
+
+    /////////////////////// listening for recording///////////////////////////////////////
+
+     socket.on("recording", async (data: any) => {
+        try {
+            socket.broadcast.to(String(roomId)).emit("recording",data);
         } catch (err) {
             console.log(err);
         }
