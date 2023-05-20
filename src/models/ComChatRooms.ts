@@ -1,20 +1,18 @@
 import { Model, DataTypes } from "sequelize";
 import sequelize from "../database/connection";
 
-class CommodityUserStatus extends Model {
+class CommodityChatRoom extends Model {
     public id!: number;
-    public userId!: number;
-    public typing?: boolean;
-    public online?: boolean;
-    public activeRoom?: string;
-    public reading?: boolean;
-    public posting?: boolean;
-    public lastSeen?: Date;
+    public senderId!: number;
+    public recipientId!: number;
+    public lastText?: string;
+    public recipientReadStatus?: boolean;
+    public numberOfUnreadText?: number;
     public createdAt!: Date;
     public updatedAt!: Date;
 }
 
-CommodityUserStatus.init(
+CommodityChatRoom.init(
     {
         id: {
             type: DataTypes.INTEGER,
@@ -22,27 +20,22 @@ CommodityUserStatus.init(
             autoIncrement: true,
             primaryKey: true,
         },
-        userId: {
+        senderId: {
             type: DataTypes.INTEGER,
             allowNull: false,
         },
-        typing: {
-            type: DataTypes.BOOLEAN,
+        recipientId: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
         },
-        online: {
-            type: DataTypes.BOOLEAN,
-        },
-        activeRoom: {
+        lastText: {
             type: DataTypes.STRING,
         },
-        reading: {
+        recipientReadStatus: {
             type: DataTypes.BOOLEAN,
         },
-        posting: {
-            type: DataTypes.BOOLEAN,
-        },
-        lastSeen: {
-            type: DataTypes.DATE,
+        numberOfUnreadText: {
+            type: DataTypes.INTEGER,
         },
         createdAt: {
             allowNull: false,
@@ -55,9 +48,9 @@ CommodityUserStatus.init(
     },
     {
         sequelize,
-        modelName: "CommodityUserStatus",
-        tableName: "CommodityUserStatus",
+        modelName: "CommodityChatRoom",
+        tableName: "CommodityChatRooms",
     }
 );
 
-export default CommodityUserStatus;
+export default CommodityChatRoom;

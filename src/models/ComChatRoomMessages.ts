@@ -1,21 +1,36 @@
 import { Model, DataTypes } from "sequelize";
 import sequelize from "../database/connection";
 
-class CommodityChat extends Model {}
+class CommodityChatRoomMessage extends Model {
+    public id!: number;
+    public senderId!: number;
+    public recipientId!: number;
+    public text?: string;
+    public image?: string;
+    public audio?: string;
+    public video?: string;
+    public otherFile?: string;
+    public roomId!: number;
+    public sent?: boolean;
+    public received?: boolean;
+    public pending?: boolean;
+    public createdAt!: Date;
+    public updatedAt!: Date;
+}
 
-CommodityChat.init(
+CommodityChatRoomMessage.init(
     {
         id: {
             type: DataTypes.INTEGER,
-            primaryKey: true,
-            autoIncrement: true,
             allowNull: false,
+            autoIncrement: true,
+            primaryKey: true,
         },
         senderId: {
             type: DataTypes.INTEGER,
             allowNull: false,
         },
-        receipientId: {
+        recipientId: {
             type: DataTypes.INTEGER,
             allowNull: false,
         },
@@ -36,12 +51,6 @@ CommodityChat.init(
         },
         roomId: {
             type: DataTypes.INTEGER,
-            references: {
-                model: "CommodityConversations",
-                key: "roomId",
-            },
-            onUpdate: "CASCADE",
-            onDelete: "CASCADE",
         },
         sent: {
             type: DataTypes.BOOLEAN,
@@ -53,19 +62,19 @@ CommodityChat.init(
             type: DataTypes.BOOLEAN,
         },
         createdAt: {
-            type: DataTypes.DATE,
             allowNull: false,
+            type: DataTypes.DATE,
         },
         updatedAt: {
+            allowNull: true,
             type: DataTypes.DATE,
         },
     },
     {
         sequelize,
-        modelName: "CommodityChat",
-        tableName: "CommodityChats",
-        timestamps: true,
+        modelName: "CommodityChatRoomMessage",
+        tableName: "CommodityChatRoomMessages",
     }
 );
 
-export default CommodityChat;
+export default CommodityChatRoomMessage;

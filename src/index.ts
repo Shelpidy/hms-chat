@@ -2,13 +2,14 @@ import express from "express";
 import cors from "cors";
 import http from "http";
 import dotenv from "dotenv";
-import CommodityChat from "../src/models/ComChats";
+import CommodityChatRoom from "../src/models/ComChatRooms";
 import CommodityUser from "../src/models/ComUsers";
 import { ChatReturnType } from "../src/types/types";
 import { Server } from "socket.io";
 import router from "./controllers/ChatController";
 import CommodityUserStatus from "./models/ComUserStatus";
-import CommodityConversation from "./models/ComConversations";
+import CommodityChatRoomMessage from "./models/ComChatRoomMessages";
+import { Op } from "sequelize";
 
 dotenv.config();
 // Create an Express app and HTTP server
@@ -34,21 +35,22 @@ socketIO.on("connection", async (socket) => {
     console.log("Client connected");
     let roomId = socket.handshake.query.roomId;
     let userId = socket.handshake.query.userId;
-    let convId = socket.handshake.query.convId;
-    if (roomId) {
+    let inChatScreen = Boolean(socket.handshake.query.inChatScreen);
+    let roomType = socket.handshake.query.roomType;
+    console.log({ roomId, roomType, inChatScreen, userId });
+    if (roomType && roomType === "c" && inChatScreen) {
         /// connect or join a room if users click on the chat button on the frontend///////////////
-        socket.join(String(roomId));
+        socket.join(`c-${roomId}`);
         try {
-            let senderId = Number(roomId[0]);
-            let receipientId = Number(roomId[1]);
-            let conversation = await CommodityConversation.findOne({
-                where: { roomId },
+            let conversation = await CommodityChatRoom.findOne({
+                where: {
+                    [Op.or]: [{ senderId: userId }, { recipientId: userId }],
+                },
             });
             if (!conversation) {
-                let conversationCreated = await CommodityConversation.create({
-                    senderId,
-                    receipientId,
-                    roomId,
+                let conversationCreated = await CommodityChatRoom.create({
+                    senderId: userId,
+                    recipientId: 3,
                 });
                 console.log("New Conversation", conversationCreated.dataValues);
             }
@@ -57,25 +59,26 @@ socketIO.on("connection", async (socket) => {
         }
     }
 
-    if (userId && roomId && !convId) {
+    if (userId && roomId && inChatScreen) {
+        console.log(`User ${userId} is in room c-${roomId} or in chat screen`);
         try {
             let status = await CommodityUserStatus.findOne({
                 where: { userId },
             });
             if (!status) {
                 let createdStatus = await CommodityUserStatus.create({
-                    onChatScreen: true,
+                    aciveRoom: `c-${roomId}`,
                     userId: userId,
                 });
                 console.log("created", {
-                    onChatScreen: createdStatus.getDataValue("onChatScreen"),
+                    activeRoom: createdStatus.getDataValue("activeRoom"),
                 });
             } else {
                 let updatedStatus = await status.update({
-                    onChatScreen: true,
+                    activeRoom: `c-${roomId}`,
                 });
                 console.log("updated", {
-                    onChatScreen: updatedStatus.getDataValue("onChatScreen"),
+                    activeRoom: updatedStatus.getDataValue("activeRoom"),
                 });
             }
         } catch (err) {
@@ -86,7 +89,7 @@ socketIO.on("connection", async (socket) => {
     if (userId) {
         try {
             let status = await CommodityUserStatus.findOne({
-                where: { userId: userId },
+                where: { userId },
             });
             if (!status) {
                 let createdStatus = await CommodityUserStatus.create({
@@ -102,18 +105,18 @@ socketIO.on("connection", async (socket) => {
             console.log(err);
         }
     }
-    console.log(`User with Id ${userId} joins room-${roomId}`);
+    console.log(`User with Id ${userId} joins room c-${roomId}`);
 
     //// chat between users ////////////////////////////////////
 
-    socket.on(String(roomId), async (msgData: any) => {
+    socket.on(`c-${roomId}`, async (msgData: any) => {
         try {
             console.log("From user 2");
             console.log(msgData);
             // Save the chat message to the database
-            const chat = await CommodityChat.create({
+            const message = await CommodityChatRoomMessage.create({
                 senderId: msgData?.senderId,
-                receipientId: msgData?.receipientId,
+                recipientId: msgData?.recipientId,
                 text: msgData?.text,
                 image: msgData?.image,
                 audio: msgData?.audio,
@@ -125,87 +128,91 @@ socketIO.on("connection", async (socket) => {
                 pending: true,
             });
 
-            let conv = await CommodityConversation.findOne({
-                where: { roomId },
+            let chat = await CommodityChatRoom.findOne({
+                where: { id: roomId },
             });
-            if (conv) {
-                let initialSenderId = conv.getDataValue("senderId");
-                let initialreceipientId = conv.getDataValue("receipientId");
+            if (chat) {
+                let initialSenderId = chat.getDataValue("senderId");
+                let initialrecipientId = chat.getDataValue("recipientId");
                 let currentSenderStatus = await CommodityUserStatus.findOne({
                     where: { userId: initialSenderId },
                 });
-                let currentReceipientStatus = await CommodityUserStatus.findOne(
-                    { where: { userId: initialreceipientId } }
-                );
+                let currentrecipientStatus = await CommodityUserStatus.findOne({
+                    where: { userId: initialrecipientId },
+                });
                 // check if the receiver have not opened the chat screen or is not on the chat screen
 
-                conv.setDataValue("receipientReadStatus", false);
-                let unReadTextNo = conv.getDataValue("numberOfUnreadText");
+                chat.setDataValue("recipientReadStatus", false);
+                let unReadTextNo = chat.getDataValue("numberOfUnreadText");
                 if (initialSenderId == msgData.senderId) {
                     console.log("From the same sender");
 
                     console.log("No of unread", unReadTextNo);
                     if (
-                        !currentReceipientStatus?.getDataValue("onChatScreen")
+                        currentrecipientStatus?.getDataValue("activeRoom") !==
+                        `c-${roomId}`
                     ) {
                         if (unReadTextNo) {
-                            conv.increment("numberOfUnreadText", { by: 1 });
+                            chat = await chat.increment("numberOfUnreadText", {
+                                by: 1,
+                            });
                         } else {
-                            conv.setDataValue("numberOfUnreadText", 1);
+                            chat.setDataValue("numberOfUnreadText", 1);
                         }
 
-                        conv.setDataValue("receipientReadStatus", false);
+                        chat.setDataValue("recipientReadStatus", false);
                     } else {
-                        conv.setDataValue("numberOfUnreadText", null);
-                        conv.setDataValue("receipientReadStatus", true);
+                        chat.setDataValue("numberOfUnreadText", null);
+                        chat.setDataValue("recipientReadStatus", true);
                     }
                 } else {
-                    if (!currentSenderStatus?.getDataValue("onChatScreen")) {
+                    if (
+                        currentSenderStatus?.getDataValue("activeRoom") !==
+                        `c-${roomId}`
+                    ) {
                         if (unReadTextNo) {
-                            conv.increment("numberOfUnreadText", { by: 1 });
+                            chat = await chat.increment("numberOfUnreadText", {
+                                by: 1,
+                            });
                         } else {
-                            conv.setDataValue("numberOfUnreadText", 1);
+                            chat.setDataValue("numberOfUnreadText", 1);
                         }
                     } else {
-                        conv.setDataValue("numberOfUnreadText", null);
-                        conv.setDataValue("receipientReadStatus", true);
+                        chat.setDataValue("numberOfUnreadText", null);
+                        chat.setDataValue("recipientReadStatus", true);
                     }
-                    conv.setDataValue("senderId", msgData.senderId);
-                    conv.setDataValue("receipientId", initialSenderId);
+                    chat.setDataValue("senderId", msgData.senderId);
+                    chat.setDataValue("recipientId", initialSenderId);
                 }
 
-                conv.setDataValue("lastText", msgData.text);
-                // conv.setDataValue("senderId",msgData.senderId)
-                conv = await conv.save();
+                chat.setDataValue("lastText", msgData.text);
+
+                // chat.setDataValue("senderId",msgData.senderId)
             }
 
-            const recipient = await CommodityUser.findByPk(
-                msgData.receipientId
-            );
+            let newChat = await chat?.save();
+            const recipient = await CommodityUser.findByPk(msgData.recipientId);
 
-            if (chat && recipient) {
+            if (message && recipient) {
                 const chatMessage: ChatReturnType = {
-                    _id: chat.getDataValue("id"),
-                    text: chat.getDataValue("text"),
-                    image: chat.getDataValue("image"),
-                    audio: chat.getDataValue("audio"),
-                    video: chat.getDataValue("video"),
-                    sent: chat.getDataValue("sent"),
-                    received: chat.getDataValue("received"),
-                    pending: chat.getDataValue("pending"),
-                    createdAt: chat.getDataValue("createdAt"),
+                    _id: message.getDataValue("id"),
+                    text: message.getDataValue("text"),
+                    image: message.getDataValue("image"),
+                    audio: message.getDataValue("audio"),
+                    video: message.getDataValue("video"),
+                    sent: message.getDataValue("sent"),
+                    received: message.getDataValue("received"),
+                    pending: message.getDataValue("pending"),
+                    createdAt: message.getDataValue("createdAt"),
                     user: {
                         _id: recipient?.getDataValue("id"),
                         name: recipient?.getFullname(),
                         avatar: recipient?.getDataValue("profileImage"),
                     },
                 };
-                socketIO
-                    .to(String(roomId))
-                    .emit(String(msgData.roomId), chatMessage);
-                socket
-                    .to(String(roomId))
-                    .emit("conversation", conv?.dataValues);
+                socketIO.to(`c-${roomId}`).emit(`c-${roomId}`, chatMessage);
+                console.log({ UpdatedConv: chat?.dataValues });
+                socket.to(`c-${roomId}`).emit("conversation", newChat);
             }
 
             // socket.emit('test',JSON.stringify({text:"Welcome to my chat"}))
@@ -253,14 +260,14 @@ socketIO.on("connection", async (socket) => {
                     userId: data.userId,
                 });
                 socket.broadcast
-                    .to(String(roomId))
+                    .to(`c-${roomId}`)
                     .emit("typing", createdStatus.dataValues);
             } else {
                 let updatedStatus = await status.update({
                     typing: data.typing,
                 });
                 socket.broadcast
-                    .to(String(roomId))
+                    .to(`c-${roomId}`)
                     .emit("typing", updatedStatus.dataValues);
             }
         } catch (err) {
@@ -270,34 +277,34 @@ socketIO.on("connection", async (socket) => {
 
     /////////////////////// listening for recording///////////////////////////////////////
 
-     socket.on("recording", async (data: any) => {
+    socket.on("recording", async (data: any) => {
         try {
-            socket.broadcast.to(String(roomId)).emit("recording",data);
+            socket.broadcast.to(`c-${roomId}`).emit("recording", data);
         } catch (err) {
             console.log(err);
         }
     });
 
     /////////////////////// update and check if a user is on ChatScreen ////////////////
-    socket.on("chatscreen", async (data: any) => {
+    socket.on("activeRoom", async (data: any) => {
         try {
             let status = await CommodityUserStatus.findOne({
                 where: { userId: data.userId },
             });
             if (!status) {
                 let createdStatus = await CommodityUserStatus.create({
-                    onChatScreen: data.onChatScreen,
+                    activeRoom: data.activeRoom,
                     userId: data.userId,
                 });
                 console.log("created", {
-                    onChatScreen: createdStatus.getDataValue("onChatScreen"),
+                    activeRoom: createdStatus.getDataValue("activeRoom"),
                 });
             } else {
                 let updatedStatus = await status.update({
-                    onChatScreen: data.onChatScreen,
+                    activeRoom: data.activeRoom,
                 });
                 console.log("updated", {
-                    onChatScreen: updatedStatus.getDataValue("onChatScreen"),
+                    activeRoom: updatedStatus.getDataValue("activeRoom"),
                 });
             }
         } catch (err) {
