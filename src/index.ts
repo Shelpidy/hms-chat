@@ -35,55 +35,11 @@ socketIO.on("connection", async (socket) => {
     console.log("Client connected");
     let roomId = socket.handshake.query.roomId;
     let userId = socket.handshake.query.userId;
-    let inChatScreen = Boolean(socket.handshake.query.inChatScreen);
     let roomType = socket.handshake.query.roomType;
-    console.log({ roomId, roomType, inChatScreen, userId });
-    if (roomType && roomType === "c" && inChatScreen) {
+    console.log({ roomId,roomType,userId });
+    if (roomId && roomType) {
         /// connect or join a room if users click on the chat button on the frontend///////////////
-        socket.join(`c-${roomId}`);
-        try {
-            let conversation = await CommodityChatRoom.findOne({
-                where: {
-                    [Op.or]: [{ senderId: userId }, { recipientId: userId }],
-                },
-            });
-            if (!conversation) {
-                let conversationCreated = await CommodityChatRoom.create({
-                    senderId: userId,
-                    recipientId: 3,
-                });
-                console.log("New Conversation", conversationCreated.dataValues);
-            }
-        } catch (err) {
-            console.log("Error", err);
-        }
-    }
-
-    if (userId && roomId && inChatScreen) {
-        console.log(`User ${userId} is in room c-${roomId} or in chat screen`);
-        try {
-            let status = await CommodityUserStatus.findOne({
-                where: { userId },
-            });
-            if (!status) {
-                let createdStatus = await CommodityUserStatus.create({
-                    aciveRoom: `c-${roomId}`,
-                    userId: userId,
-                });
-                console.log("created", {
-                    activeRoom: createdStatus.getDataValue("activeRoom"),
-                });
-            } else {
-                let updatedStatus = await status.update({
-                    activeRoom: `c-${roomId}`,
-                });
-                console.log("updated", {
-                    activeRoom: updatedStatus.getDataValue("activeRoom"),
-                });
-            }
-        } catch (err) {
-            console.log(err);
-        }
+        socket.join(`${roomType}-${roomId}`);
     }
 
     if (userId) {
@@ -285,7 +241,7 @@ socketIO.on("connection", async (socket) => {
         }
     });
 
-    /////////////////////// update and check if a user is on ChatScreen ////////////////
+    /////////////////////// update and check if a user is on a particular ChatRoom ////////////////
     socket.on("activeRoom", async (data: any) => {
         try {
             let status = await CommodityUserStatus.findOne({
@@ -306,7 +262,9 @@ socketIO.on("connection", async (socket) => {
                 console.log("updated", {
                     activeRoom: updatedStatus.getDataValue("activeRoom"),
                 });
+           
             }
+            console.log(`User ${data.userId} is in room ${data.activeRoom}`);
         } catch (err) {
             console.log(err);
         }
