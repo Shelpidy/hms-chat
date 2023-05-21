@@ -33,7 +33,7 @@ app.get("/", (req, res) => {
 
 socketIO.on("connection", async (socket) => {
     console.log("Client connected");
-    let roomId = socket.handshake.query.roomId;
+    let roomId = socket.handshake.query.roomId || null;
     let userId = socket.handshake.query.userId;
     let roomType = socket.handshake.query.roomType;
     console.log({ roomId,roomType,userId });
@@ -50,11 +50,12 @@ socketIO.on("connection", async (socket) => {
             if (!status) {
                 let createdStatus = await CommodityUserStatus.create({
                     online: true,
+                    activeRoom:`c-${roomId}`,
                     userId,
                 });
                 socket.broadcast.emit("online", createdStatus.dataValues);
             } else {
-                let updatedStatus = await status.update({ online: true });
+                let updatedStatus = await status.update({ online: true,activeRoom:`c-${roomId}`, });
                 socket.broadcast.emit("online", updatedStatus.dataValues);
             }
         } catch (err) {
@@ -244,6 +245,7 @@ socketIO.on("connection", async (socket) => {
     /////////////////////// update and check if a user is on a particular ChatRoom ////////////////
     socket.on("activeRoom", async (data: any) => {
         try {
+            console.log("ACTIVE ROOM",data)
             let status = await CommodityUserStatus.findOne({
                 where: { userId: data.userId },
             });
@@ -269,6 +271,29 @@ socketIO.on("connection", async (socket) => {
             console.log(err);
         }
     });
+
+    //////////////////////// LISTEN FOR DISCONNECTION /////////////////////////////////////////////
+    socket.on("disconnect",async()=>{
+          try {
+            let status = await CommodityUserStatus.findOne({
+                where: { userId},
+            });
+            
+            if (status) {
+                let updatedStatus = await status.update({
+                    online: false,
+                    activeRoom:null
+                });
+                console.log(`User with Id ${userId} is offline`)
+                socket.broadcast.emit("online", updatedStatus.dataValues);
+            } else {  
+            }
+        } catch (err) {
+            console.log(err);
+        }
+
+
+    })
 });
 
 let PORT = process.env.PORT;

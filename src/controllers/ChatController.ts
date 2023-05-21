@@ -141,13 +141,13 @@ router.get(
             let start = (Number(pageNumber) - 1) * numberOfRecord;
             const { rows: chats, count } =
                 await CommodityChatRoom.findAndCountAll({
-                    where: {
-                        [Op.or]: [
+                    where: {[Op.and]:[{[Op.or]: [
                             { recipientId: userId },
                             { senderId: userId },
-                        ],
+                        ]},{lastText:{[Op.not]:null}}]
+                        ,
                     },
-                    order: [["id", "DESC"]],
+                    order: [["updatedAt", "DESC"]],
                     limit: numberOfRecord,
                     offset: start,
                 });
