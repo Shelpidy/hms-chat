@@ -32,17 +32,19 @@ app.get("/", (req, res) => {
 // socketIO.send("Hello client")
 
 socketIO.on("connection", async (socket) => {
-    console.log("Client connected");
+   
     let roomId = socket.handshake.query.roomId || null;
     let userId = socket.handshake.query.userId;
-    let roomType = socket.handshake.query.roomType;
-    console.log({ roomId,roomType,userId });
+    let roomType = socket.handshake.query.roomType || null;
+    // console.log({ roomId,roomType,userId });
+   
     if (roomId && roomType) {
         /// connect or join a room if users click on the chat button on the frontend///////////////
         socket.join(`${roomType}-${roomId}`);
     }
 
     if (userId) {
+
         try {
             let status = await CommodityUserStatus.findOne({
                 where: { userId },
@@ -58,11 +60,19 @@ socketIO.on("connection", async (socket) => {
                 let updatedStatus = await status.update({ online: true,activeRoom:`c-${roomId}`, });
                 socket.broadcast.emit("online", updatedStatus.dataValues);
             }
+             console.log(`User with Id ${userId} is online`);
         } catch (err) {
             console.log(err);
         }
     }
-    console.log(`User with Id ${userId} joins room c-${roomId}`);
+
+    /////////////////// JOIN A ROOM //////////////////////
+
+    socket.on("joinRoom",(data:any)=>{
+        socket.join(data.room)
+        console.log(`User with Id ${data.userId} joins room ${data.room}`)
+
+    })
 
     //// chat between users ////////////////////////////////////
 
@@ -243,6 +253,7 @@ socketIO.on("connection", async (socket) => {
     });
 
     /////////////////////// update and check if a user is on a particular ChatRoom ////////////////
+
     socket.on("activeRoom", async (data: any) => {
         try {
             console.log("ACTIVE ROOM",data)
@@ -266,7 +277,7 @@ socketIO.on("connection", async (socket) => {
                 });
            
             }
-            console.log(`User ${data.userId} is in room ${data.activeRoom}`);
+            console.log(`User ${data.userId} is active in room ${data.activeRoom}`);
         } catch (err) {
             console.log(err);
         }
