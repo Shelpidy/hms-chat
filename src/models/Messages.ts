@@ -1,41 +1,27 @@
 import { Model, DataTypes } from "sequelize";
 import sequelize from "../database/connection";
 
-class CommodityChatRoomMessage extends Model {
-    public id!: number;
-    public senderId!: number;
-    public recipientId!: number;
-    public text?: string;
-    public image?: string;
-    public audio?: string;
-    public video?: string;
-    public otherFile?: string;
-    public roomId!: number;
-    public sent?: boolean;
-    public received?: boolean;
-    public pending?: boolean;
-    public createdAt!: Date;
-    public updatedAt!: Date;
+class Message extends Model {
 }
 
-CommodityChatRoomMessage.init(
+Message.init(
     {
-        id: {
-            type: DataTypes.INTEGER,
+        messageId: {
+            type: DataTypes.UUID,
             allowNull: false,
-            autoIncrement: true,
             primaryKey: true,
+            defaultValue:DataTypes.UUIDV4
         },
         senderId: {
-            type: DataTypes.INTEGER,
+            type: DataTypes.UUID,
             allowNull: false,
         },
         recipientId: {
-            type: DataTypes.INTEGER,
+            type: DataTypes.UUID,
             allowNull: false,
         },
         text: {
-            type: DataTypes.STRING,
+            type: DataTypes.TEXT,
         },
         image: {
             type: DataTypes.STRING,
@@ -50,7 +36,13 @@ CommodityChatRoomMessage.init(
             type: DataTypes.STRING,
         },
         roomId: {
-            type: DataTypes.INTEGER,
+            type: DataTypes.UUID,
+            references:{
+                model:"Rooms",
+                key:'roomId'
+            },
+            onDelete:"CASCADE",
+            onUpdate:"CASCADE"
         },
         sent: {
             type: DataTypes.BOOLEAN,
@@ -72,9 +64,9 @@ CommodityChatRoomMessage.init(
     },
     {
         sequelize,
-        modelName: "CommodityChatRoomMessage",
-        tableName: "CommodityChatRoomMessages",
+        modelName: "Message",
+        tableName: "Messages",
     }
 );
 
-export default CommodityChatRoomMessage;
+export default Message;

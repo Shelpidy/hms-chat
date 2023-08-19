@@ -2,23 +2,33 @@ import express from "express";
 import cors from "cors";
 import http from "http";
 import dotenv from "dotenv";
-import CommodityChatRoom from "../src/models/ComChatRooms";
-import CommodityUser from "../src/models/ComUsers";
+import Room from "./models/Rooms";
+import User from "../src/models/Users";
 import { ChatReturnType } from "../src/types/types";
 import { Server } from "socket.io";
 import router from "./controllers/ChatController";
-import CommodityUserStatus from "./models/ComUserStatus";
-import CommodityChatRoomMessage from "./models/ComChatRoomMessages";
+import Status from "./models/Status";
+import Message from "./models/Messages";
 import { Op } from "sequelize";
+import authorizeApiAccess from "./middlewares/ApiAccess";
+import { runUserConsumer } from "./events/consumers";
 
 dotenv.config();
 // Create an Express app and HTTP server
 const app = express();
 app.use(express.json());
 app.use(cors());
+app.use(authorizeApiAccess)
 app.use(router);
 
+
 const server = http.createServer(app);
+
+///// RUN USER CONSUMER FROM KAFKA BROKERS ////////
+
+runUserConsumer().catch(err =>{
+    console.log("Consumer Error from Server with Id",process.env.SERVER_ID,"=>",err)
+})
 
 const socketIO = new Server(server, {
     cors: { origin: "*", methods: ["GET", "POST"] },
@@ -31,36 +41,39 @@ app.get("/", (req, res) => {
 
 // socketIO.send("Hello client")
 
+
+
 socketIO.on("connection", async (socket) => {
-   
-    let roomId = socket.handshake.query.roomId || null;
+    let roomId = socket.handshake.query.roomId || "" satisfies string;
     let userId = socket.handshake.query.userId;
-    let roomType = socket.handshake.query.roomType || null;
-    // console.log({ roomId,roomType,userId });
-   
-    if (roomId && roomType) {
+    let roomType = socket.handshake.query.roomType || "";
+    console.log({ roomId,roomType,userId });
+
+    if (roomId) {
         /// connect or join a room if users click on the chat button on the frontend///////////////
-        socket.join(`${roomType}-${roomId}`);
+        socket.join(`${roomId}`);
     }
 
     if (userId) {
-
         try {
-            let status = await CommodityUserStatus.findOne({
+            let status = await Status.findOne({
                 where: { userId },
             });
             if (!status) {
-                let createdStatus = await CommodityUserStatus.create({
+                let createdStatus = await Status.create({
                     online: true,
-                    activeRoom:`c-${roomId}`,
+                    activeRoom: roomId,
                     userId,
                 });
                 socket.broadcast.emit("online", createdStatus.dataValues);
             } else {
-                let updatedStatus = await status.update({ online: true,activeRoom:`c-${roomId}`, });
+                let updatedStatus = await status.update({
+                    online: true,
+                    activeRoom: roomId,
+                });
                 socket.broadcast.emit("online", updatedStatus.dataValues);
             }
-             console.log(`User with Id ${userId} is online`);
+            console.log(`User with Id ${userId} is online`);
         } catch (err) {
             console.log(err);
         }
@@ -68,20 +81,19 @@ socketIO.on("connection", async (socket) => {
 
     /////////////////// JOIN A ROOM //////////////////////
 
-    socket.on("joinRoom",(data:any)=>{
-        socket.join(data.room)
-        console.log(`User with Id ${data.userId} joins room ${data.room}`)
-
-    })
+    socket.on("joinRoom", (data: any) => {
+        socket.join(data.room);
+        console.log(`User with Id ${data.userId} joins room ${data.room}`);
+    });
 
     //// chat between users ////////////////////////////////////
 
-    socket.on(`c-${roomId}`, async (msgData: any) => {
+    socket.on(roomId as string, async (msgData: any) => {
         try {
-            console.log("From user 2");
+            // console.log("From user 2");
             console.log(msgData);
             // Save the chat message to the database
-            const message = await CommodityChatRoomMessage.create({
+            const message = await Message.create({
                 senderId: msgData?.senderId,
                 recipientId: msgData?.recipientId,
                 text: msgData?.text,
@@ -91,20 +103,20 @@ socketIO.on("connection", async (socket) => {
                 otherFile: msgData?.otherFile,
                 roomId: msgData?.roomId,
                 sent: true,
-                received: false,
+                received: false,  
                 pending: true,
             });
 
-            let chat = await CommodityChatRoom.findOne({
+            let chat = await Room.findOne({
                 where: { id: roomId },
             });
             if (chat) {
                 let initialSenderId = chat.getDataValue("senderId");
                 let initialrecipientId = chat.getDataValue("recipientId");
-                let currentSenderStatus = await CommodityUserStatus.findOne({
+                let currentSenderStatus = await Status.findOne({
                     where: { userId: initialSenderId },
                 });
-                let currentrecipientStatus = await CommodityUserStatus.findOne({
+                let currentrecipientStatus = await Status.findOne({
                     where: { userId: initialrecipientId },
                 });
                 // check if the receiver have not opened the chat screen or is not on the chat screen
@@ -117,7 +129,7 @@ socketIO.on("connection", async (socket) => {
                     console.log("No of unread", unReadTextNo);
                     if (
                         currentrecipientStatus?.getDataValue("activeRoom") !==
-                        `c-${roomId}`
+                        roomId
                     ) {
                         if (unReadTextNo) {
                             chat = await chat.increment("numberOfUnreadText", {
@@ -135,7 +147,7 @@ socketIO.on("connection", async (socket) => {
                 } else {
                     if (
                         currentSenderStatus?.getDataValue("activeRoom") !==
-                        `c-${roomId}`
+                        roomId
                     ) {
                         if (unReadTextNo) {
                             chat = await chat.increment("numberOfUnreadText", {
@@ -158,7 +170,7 @@ socketIO.on("connection", async (socket) => {
             }
 
             let newChat = await chat?.save();
-            const recipient = await CommodityUser.findByPk(msgData.recipientId);
+            const recipient = await User.findByPk(msgData.recipientId);
 
             if (message && recipient) {
                 const chatMessage: ChatReturnType = {
@@ -177,9 +189,9 @@ socketIO.on("connection", async (socket) => {
                         avatar: recipient?.getDataValue("profileImage"),
                     },
                 };
-                socketIO.to(`c-${roomId}`).emit(`c-${roomId}`, chatMessage);
+                socketIO.to(roomId).emit(roomId as string, chatMessage);
                 console.log({ UpdatedConv: chat?.dataValues });
-                socket.to(`c-${roomId}`).emit("conversation", newChat);
+                socket.to(roomId).emit("conversation", newChat);
             }
 
             // socket.emit('test',JSON.stringify({text:"Welcome to my chat"}))
@@ -192,11 +204,11 @@ socketIO.on("connection", async (socket) => {
 
     socket.on("online", async (data: any) => {
         try {
-            let status = await CommodityUserStatus.findOne({
+            let status = await Status.findOne({
                 where: { userId: data.userId },
             });
             if (!status) {
-                let createdStatus = await CommodityUserStatus.create({
+                let createdStatus = await Status.create({
                     online: data.online,
                     userId: data.userId,
                 });
@@ -218,25 +230,29 @@ socketIO.on("connection", async (socket) => {
     //////////////////////// update typing status ///////////////////////
     socket.on("typing", async (data: any) => {
         try {
-            let status = await CommodityUserStatus.findOne({
-                where: { userId: data.userId },
-            });
-            if (!status) {
-                let createdStatus = await CommodityUserStatus.create({
-                    typing: data.typing,
-                    userId: data.userId,
-                });
-                socket.broadcast
-                    .to(`c-${roomId}`)
-                    .emit("typing", createdStatus.dataValues);
-            } else {
-                let updatedStatus = await status.update({
-                    typing: data.typing,
-                });
-                socket.broadcast
-                    .to(`c-${roomId}`)
-                    .emit("typing", updatedStatus.dataValues);
-            }
+            // let status = await Status.findOne({
+            //     where: { userId: data.userId },
+            // });
+            // if (!status) {
+            //     let createdStatus = await Status.create({
+            //         status:"typing",
+            //         userId: data.userId,
+            //     });
+            //     socket.broadcast
+            //         .to(roomId)
+            //         .emit("typing", createdStatus.dataValues);
+            // } else {
+            //     let updatedStatus = await status.update({
+            //         status:"typing",
+            //     });
+            //     socket.broadcast
+            //         .to(roomId)
+            //         .emit("typing", updatedStatus.dataValues);
+            // }
+
+            socket.broadcast
+            .to(roomId)
+            .emit("typing",data);
         } catch (err) {
             console.log(err);
         }
@@ -246,22 +262,24 @@ socketIO.on("connection", async (socket) => {
 
     socket.on("recording", async (data: any) => {
         try {
-            socket.broadcast.to(`c-${roomId}`).emit("recording", data);
+            socket.broadcast.to(roomId).emit("recording", data);
         } catch (err) {
             console.log(err);
         }
     });
 
-    /////////////////////// update and check if a user is on a particular ChatRoom ////////////////
+    /////////////////////// update and check if a user is on a particular Room ////////////////
 
     socket.on("activeRoom", async (data: any) => {
         try {
-            console.log("ACTIVE ROOM",data)
-            let status = await CommodityUserStatus.findOne({
+            console.log("ACTIVE ROOM", data);
+            roomId = data.roomId
+            console.log(`User with Id ${data.userId} joins room ${data.roomId}`);
+            let status = await Status.findOne({
                 where: { userId: data.userId },
             });
             if (!status) {
-                let createdStatus = await CommodityUserStatus.create({
+                let createdStatus = await Status.create({
                     activeRoom: data.activeRoom,
                     userId: data.userId,
                 });
@@ -275,36 +293,35 @@ socketIO.on("connection", async (socket) => {
                 console.log("updated", {
                     activeRoom: updatedStatus.getDataValue("activeRoom"),
                 });
-           
             }
-            console.log(`User ${data.userId} is active in room ${data.activeRoom}`);
+            console.log(
+                `User ${data.userId} is active in room ${data.activeRoom}`
+            );
         } catch (err) {
             console.log(err);
         }
     });
 
     //////////////////////// LISTEN FOR DISCONNECTION /////////////////////////////////////////////
-    socket.on("disconnect",async()=>{
-          try {
-            let status = await CommodityUserStatus.findOne({
-                where: { userId},
+    socket.on("disconnect", async () => {
+        try {
+            let status = await Status.findOne({
+                where: { userId },
             });
-            
+
             if (status) {
                 let updatedStatus = await status.update({
                     online: false,
-                    activeRoom:null
+                    activeRoom: null,
                 });
-                console.log(`User with Id ${userId} is offline`)
+                console.log(`User with Id ${userId} is offline`);
                 socket.broadcast.emit("online", updatedStatus.dataValues);
-            } else {  
+            } else {
             }
         } catch (err) {
             console.log(err);
         }
-
-
-    })
+    });
 });
 
 let PORT = process.env.PORT;

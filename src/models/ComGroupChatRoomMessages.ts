@@ -1,7 +1,7 @@
 import { Model, DataTypes } from "sequelize";
 import sequelize from "../database/connection";
 
-class CommodityGroupChatRoomMessage extends Model {
+class GroupMessage extends Model {
     public id!: number;
     public senderId!: number;
     public text?: string;
@@ -17,7 +17,7 @@ class CommodityGroupChatRoomMessage extends Model {
     public updatedAt!: Date;
 }
 
-CommodityGroupChatRoomMessage.init(
+GroupMessage.init(
     {
         id: {
             type: DataTypes.INTEGER,
@@ -67,9 +67,9 @@ CommodityGroupChatRoomMessage.init(
     },
     {
         sequelize,
-        modelName: "CommodityGroupChatRoomMessage",
-        tableName: "CommodityGroupChatRoomMessages",
+        modelName: "GroupMessage",
+        tableName: "GroupMessages",
     }
 );
 
-export default CommodityGroupChatRoomMessage;
+export default GroupMessage;

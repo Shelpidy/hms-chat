@@ -1,0 +1,43 @@
+services:
+    chat1:
+        container_name: chat_container_1
+        build: .
+        ports:
+            - 8000:8080
+        environment:
+            - PORT=8080
+            - DB_PASSWORD=
+            - DB_USERNAME=root
+            - DB_HOST=localhost
+            - DB_NAME=db
+    chat2:
+        container_name: chat_container_2
+        build: .
+        ports:
+            - 8001:8080
+        environment:
+            - PORT=8080
+            - DB_PASSWORD=
+            - DB_USERNAME=root
+            - DB_HOST=localhost
+            - DB_NAME=db
+    chat3:
+        container_name: chat_container_3
+        build: .
+        ports:
+            - 8002:8080
+        environment:
+            - PORT=8080
+            - DB_PASSWORD=
+            - DB_USERNAME=root
+            - DB_HOST=localhost
+            - DB_NAME=db
+    nginx:
+        container_name: nginx_container
+        image: custom-nginx
+        ports:
+            - 8080:80
+        depends_on:
+            - chat1
+            - chat2
+            - chat3

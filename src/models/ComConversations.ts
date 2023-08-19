@@ -1,9 +1,9 @@
 import { Model, DataTypes } from "sequelize";
 import sequelize from "../database/connection";
 
-class CommodityConversation extends Model {}
+class Conversation extends Model {}
 
-CommodityConversation.init(
+Conversation.init(
     {
         id: {
             type: DataTypes.INTEGER,
@@ -15,17 +15,17 @@ CommodityConversation.init(
             type: DataTypes.INTEGER,
             allowNull: false,
             references: {
-                model: "CommodityUsers",
+                model: "Users",
                 key: "id",
             },
             onUpdate: "CASCADE",
             onDelete: "CASCADE",
         },
-        receipientId: {
+        recipientId: {
             type: DataTypes.INTEGER,
             allowNull: false,
             references: {
-                model: "CommodityUsers",
+                model: "Users",
                 key: "id",
             },
             onUpdate: "CASCADE",
@@ -34,7 +34,7 @@ CommodityConversation.init(
         lastText: {
             type: DataTypes.STRING,
         },
-        receipientReadStatus: {
+        recipientReadStatus: {
             type: DataTypes.BOOLEAN,
         },
         roomId: {
@@ -55,10 +55,10 @@ CommodityConversation.init(
     },
     {
         sequelize,
-        modelName: "CommodityConversation",
-        tableName: "CommodityConversations",
+        modelName: "Conversation",
+        tableName: "Conversations",
         underscored: false, // Set to false to disable underscored naming conventions
     }
 );
 
-export default CommodityConversation;
+export default Conversation;

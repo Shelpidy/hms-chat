@@ -1,7 +1,7 @@
 import { Model, DataTypes } from "sequelize";
 import sequelize from "../database/connection";
 
-class CommodityChatRoom extends Model {
+class Room extends Model {
     public id!: number;
     public senderId!: number;
     public recipientId!: number;
@@ -12,20 +12,20 @@ class CommodityChatRoom extends Model {
     public updatedAt!: Date;
 }
 
-CommodityChatRoom.init(
+Room.init(
     {
-        id: {
-            type: DataTypes.INTEGER,
+        roomId: {
+            type: DataTypes.UUID,
             allowNull: false,
-            autoIncrement: true,
             primaryKey: true,
+            defaultValue:DataTypes.UUIDV4
         },
         senderId: {
-            type: DataTypes.INTEGER,
+            type: DataTypes.UUID,
             allowNull: false,
         },
         recipientId: {
-            type: DataTypes.INTEGER,
+            type: DataTypes.UUID,
             allowNull: false,
         },
         lastText: {
@@ -48,9 +48,9 @@ CommodityChatRoom.init(
     },
     {
         sequelize,
-        modelName: "CommodityChatRoom",
-        tableName: "CommodityChatRooms",
+        modelName: "Room",
+        tableName: "Rooms",
     }
 );
 
-export default CommodityChatRoom;
+export default Room;

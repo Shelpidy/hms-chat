@@ -1,7 +1,7 @@
 import { Model, DataTypes } from "sequelize";
 import sequelize from "../database/connection";
 
-class CommodityGroupChatRoom extends Model {
+class GroupRoom extends Model {
     public id!: number;
     public adminId!: number;
     public otherAdminIs?: any;
@@ -15,7 +15,7 @@ class CommodityGroupChatRoom extends Model {
     public updatedAt!: Date;
 }
 
-CommodityGroupChatRoom.init(
+GroupRoom.init(
     {
         id: {
             type: DataTypes.INTEGER,
@@ -61,9 +61,9 @@ CommodityGroupChatRoom.init(
     },
     {
         sequelize,
-        modelName: "CommodityGroupChatRoom",
-        tableName: "CommodityGroupChatRooms",
+        modelName: "GroupRoom",
+        tableName: "GroupRooms",
     }
 );
 
-export default CommodityGroupChatRoom;
+export default GroupRoom;

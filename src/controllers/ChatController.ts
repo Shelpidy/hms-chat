@@ -1,6 +1,6 @@
 import express, { Request, Response } from "express";
-import CommodityChatRoom from "../models/ComChatRooms";
-import CommodityUser from "../models/ComUsers";
+import Room from "../models/Rooms";
+import User from "../models/Users";
 import { ChatReturnType, RUser } from "../types/types";
 import {
     getResponseBody,
@@ -8,24 +8,25 @@ import {
     responseStatusCode,
 } from "../utils/utils";
 import { Op } from "sequelize";
-import CommodityUserStatus from "../models/ComUserStatus";
-import CommodityChatRoomMessage from "../models/ComChatRoomMessages";
+import Status from "../models/Status";
+import Message from "../models/Messages";
 
 const router = express.Router();
 
 ////////////////////////// GET ALL USER MESSAGES ///////////////////
 router.get(
-    "/api/messages/:roomId/:pageNumber/:numberOfRecord",
+    "/messages/:roomId/",
     async (req: Request, res: Response) => {
         try {
-            let { roomId, pageNumber, numberOfRecord: numRec } = req.params;
-            let numberOfRecord = Number(numRec);
+            let { roomId} = req.params;
+            let { pageNumber = 1, numberOfRecord: numRec } = req.query;
+            let numberOfRecord = Number(numRec || 100);
             let start = (Number(pageNumber) - 1) * numberOfRecord;
 
             const { rows: chats, count } =
-                await CommodityChatRoomMessage.findAndCountAll({
+                await Message.findAndCountAll({
                     where: { roomId },
-                    order: [["id", "DESC"]],
+                    order: [["RoomId", "DESC"]],
                     limit: numberOfRecord,
                     offset: start,
                 });
@@ -36,23 +37,23 @@ router.get(
                         _id: chat.getDataValue("recipientId"),
                         name:
                             (
-                                await CommodityUser.findOne({
+                                await User.findOne({
                                     where: {
-                                        id: chat.getDataValue("recipientId"),
+                                        userId: chat.getDataValue("recipientId"),
                                     },
                                 })
                             )?.getFullname() ?? "",
                         avatar:
                             (
-                                await CommodityUser.findOne({
+                                await User.findOne({
                                     where: {
-                                        id: chat.getDataValue("recipientId"),
+                                        userId: chat.getDataValue("recipientId"),
                                     },
                                 })
                             )?.getDataValue("profileImage") ?? "",
                     };
                     const formattedChat: ChatReturnType = {
-                        _id: chat.getDataValue("id"),
+                        _id: chat.getDataValue("RoomId"),
                         text: chat.getDataValue("text"),
                         image: chat.getDataValue("image"),
                         audio: chat.getDataValue("audio"),
@@ -81,12 +82,12 @@ router.get(
 //////////// DELETE A MESSAGE ////////////////////
 
 router.delete(
-    "/api/messages/:messageId",
+    "/messages/:MessageId",
     async (req: Request, res: Response) => {
         try {
-            let messageId = req.params.messageId;
-            let chat = await CommodityChatRoomMessage.findOne({
-                where: { id: messageId },
+            let MessageId = req.params.messageId;
+            let chat = await Message.findOne({
+                where: { MessageId },
             });
             if (!chat) {
                 return res
@@ -94,13 +95,13 @@ router.delete(
                     .json(
                         getResponseBody(
                             responseStatus.ERROR,
-                            `Message with id ${messageId} does not exist.`,
+                            `Message with id ${MessageId} does not exist.`,
                             {}
                         )
                     );
             }
-            let deleteRow = await CommodityChatRoom.destroy({
-                where: { id: messageId },
+            let deleteRow = await Message.destroy({
+                where: {MessageId},
             });
             if (deleteRow >= 1) {
                 return res
@@ -123,8 +124,7 @@ router.delete(
             console.error(error);
             res.status(responseStatusCode.BAD_REQUEST).json({
                 status: responseStatus.ERROR,
-                data: error,
-                message: "Delete Fail",
+                message:String(error)
             });
         }
     }
@@ -133,19 +133,25 @@ router.delete(
 ///////////////////////// GET ALL USER CHATS //////////////////////
 
 router.get(
-    "/api/messages/chats/:userId/:pageNumber/:numberOfRecord",
+    "/chats/",
     async (req: Request, res: Response) => {
         try {
-            let { userId, pageNumber, numberOfRecord: numRec } = req.params;
-            let numberOfRecord = Number(numRec);
+            let {userId} = res.locals
+            let {pageNumber = 1, numberOfRecord: numRec } = req.query;
+            let numberOfRecord = Number(numRec || 100);
             let start = (Number(pageNumber) - 1) * numberOfRecord;
             const { rows: chats, count } =
-                await CommodityChatRoom.findAndCountAll({
-                    where: {[Op.and]:[{[Op.or]: [
-                            { recipientId: userId },
-                            { senderId: userId },
-                        ]},{lastText:{[Op.not]:null}}]
-                        ,
+                await Room.findAndCountAll({
+                    where: {
+                        [Op.and]: [
+                            {
+                                [Op.or]: [
+                                    { recipientId: userId },
+                                    { senderId: userId },
+                                ],
+                            },
+                            { lastText: { [Op.not]: null } },
+                        ],
                     },
                     order: [["updatedAt", "DESC"]],
                     limit: numberOfRecord,
@@ -156,8 +162,7 @@ router.get(
             console.error(error);
             res.status(responseStatusCode.BAD_REQUEST).json({
                 status: responseStatus.ERROR,
-                data: error,
-                message: "Getting chats Failed",
+                message:String(error),
             });
         }
     }
@@ -166,12 +171,12 @@ router.get(
 /////////////////////// DELETE CONVERSATION OR CHAT CLEAR USER CHAT MESSAGES /////////////////////////////
 
 router.delete(
-    "/api/messages/chats/:id",
+    "/chats/:RoomId",
     async (req: Request, res: Response) => {
         try {
-            let id = req.params.id;
-            let chat = await CommodityChatRoom.findOne({
-                where: { id },
+            let {RoomId} = req.params;
+            let chat = await Room.findOne({
+                where: { RoomId },
             });
             if (!chat) {
                 return res
@@ -179,13 +184,13 @@ router.delete(
                     .json(
                         getResponseBody(
                             responseStatus.ERROR,
-                            `Chat with id ${id} does not exist.`,
+                            `Chat with id ${RoomId} does not exist.`,
                             {}
                         )
                     );
             }
-            let deleteRow = await CommodityChatRoom.destroy({
-                where: { id },
+            let deleteRow = await Room.destroy({
+                where: { RoomId },
             });
             if (deleteRow >= 1) {
                 return res
@@ -208,8 +213,7 @@ router.delete(
             console.error(error);
             res.status(responseStatusCode.BAD_REQUEST).json({
                 status: responseStatus.ERROR,
-                data: error,
-                message: "Delete Fail",
+                message:String(error),
             });
         }
     }
@@ -217,12 +221,13 @@ router.delete(
 
 ////////////////////// READ CONVERSATION ///////////////////////////////
 router.put(
-    "/api/messages/chats/read/:roomId/:userId",
+    "/chats/read/:roomId/",
     async (req: Request, res: Response) => {
         try {
-            let { roomId, userId } = req.params;
-            let conversation = await CommodityChatRoom.findOne({
-                where: { id: roomId },
+            let { roomId} = req.params;
+            let { userId} = res.locals;
+            let conversation = await Room.findOne({
+                where: { RoomId: roomId },
             });
             if (!conversation) {
                 return res
@@ -252,8 +257,7 @@ router.put(
             console.error(error);
             res.status(responseStatusCode.BAD_REQUEST).json({
                 status: responseStatus.ERROR,
-                data: error,
-                message: "Get Fail",
+                message:String(error),
             });
         }
     }
@@ -261,23 +265,23 @@ router.put(
 
 ////////////////////// GET USER STATUS ////////////////////////////////
 
-router.get("/api/userstatus/:userId", async (req: Request, res: Response) => {
+router.get("/Status/:userId", async (req: Request, res: Response) => {
     try {
         let { userId } = req.params;
-        const userStatus = await CommodityUserStatus.findOne({
+        const status = await Status.findOne({
             where: { userId },
         });
-        if (userStatus) {
+        if (status) {
             return res
                 .status(responseStatusCode.OK)
-                .json(getResponseBody(responseStatus.SUCCESS, "", userStatus));
+                .json(getResponseBody(responseStatus.SUCCESS, "", status));
         }
         return res
             .status(responseStatusCode.NOT_FOUND)
             .json(
                 getResponseBody(
                     responseStatus.ERROR,
-                    `UserStatus for userId ${userId} does not exist`,
+                    `Status for userId ${userId} does not exist`,
                     {}
                 )
             );
@@ -285,19 +289,18 @@ router.get("/api/userstatus/:userId", async (req: Request, res: Response) => {
         console.error(error);
         res.status(responseStatusCode.BAD_REQUEST).json({
             status: responseStatus.ERROR,
-            data: error,
-            message: "Getting User-Status failed",
+            message:String(error),
         });
     }
 });
 
 //////////////////////  GET OR CREATE ROOMID ////////////////////////////
 router.get(
-    "/api/room/:userIdOne/:userIdTwo",
+    "/room/:userIdOne/:userIdTwo",
     async (req: Request, res: Response) => {
         try {
             const { userIdOne, userIdTwo } = req.params;
-            let chat = await CommodityChatRoom.findOne({
+            let chat = await Room.findOne({
                 where: {
                     [Op.or]: [
                         {
@@ -316,29 +319,26 @@ router.get(
                 },
             });
             if (chat) {
-                return res
-                    .status(responseStatusCode.OK)
-                    .json(
-                        getResponseBody(responseStatus.SUCCESS, "", {
-                            roomId: chat.getDataValue("id"),
-                        })
-                    );
+                return res.status(responseStatusCode.OK).json(
+                    getResponseBody(responseStatus.SUCCESS, "", {
+                        roomId: chat.getDataValue("RoomId"),
+                    })
+                );
             }
-            let newChat = await CommodityChatRoom.create({
+            let newChat = await Room.create({
                 senderId: userIdOne,
                 recipientId: userIdTwo,
             });
             res.status(responseStatusCode.OK).json(
                 getResponseBody(responseStatus.SUCCESS, "", {
-                    roomId: newChat.getDataValue("id"),
+                    roomId: newChat.getDataValue("RoomId"),
                 })
             );
         } catch (error) {
             console.error(error);
             res.status(responseStatusCode.BAD_REQUEST).json({
                 status: responseStatus.ERROR,
-                data: error,
-                message: "Getting roomId failed.",
+                message:String(error),
             });
         }
     }
