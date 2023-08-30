@@ -29,6 +29,7 @@ export async function runUserConsumer() {
     console.log("Successfully subscribed to topics!");
 
     await consumer.run({
+      
       eachMessage: async ({ topic, partition, message }) => {
         const { serverId, ...data } = JSON.parse(message.value?.toString() || "{}");
 

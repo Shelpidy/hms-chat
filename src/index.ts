@@ -26,9 +26,9 @@ const server = http.createServer(app);
 
 ///// RUN USER CONSUMER FROM KAFKA BROKERS ////////
 
-runUserConsumer().catch(err =>{
-    console.log("Consumer Error from Server with Id",process.env.SERVER_ID,"=>",err)
-})
+// runUserConsumer().catch(err =>{
+//     console.log("Consumer Error from Server with Id",process.env.SERVER_ID,"=>",err)
+// })
 
 const socketIO = new Server(server, {
     cors: { origin: "*", methods: ["GET", "POST"] },
@@ -62,16 +62,14 @@ socketIO.on("connection", async (socket) => {
             if (!status) {
                 let createdStatus = await Status.create({
                     online: true,
-                    activeRoom: roomId,
                     userId,
                 });
-                socket.broadcast.emit("online", createdStatus.dataValues);
+                socket.emit(String(userId), createdStatus.dataValues);
             } else {
                 let updatedStatus = await status.update({
                     online: true,
-                    activeRoom: roomId,
                 });
-                socket.broadcast.emit("online", updatedStatus.dataValues);
+                socket.emit(String(userId), updatedStatus.dataValues);
             }
             console.log(`User with Id ${userId} is online`);
         } catch (err) {

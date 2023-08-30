@@ -133,7 +133,7 @@ router.delete(
 ///////////////////////// GET ALL USER CHATS //////////////////////
 
 router.get(
-    "/chats/",
+    "/rooms/",
     async (req: Request, res: Response) => {
         try {
             let {userId} = res.locals
@@ -171,7 +171,7 @@ router.get(
 /////////////////////// DELETE CONVERSATION OR CHAT CLEAR USER CHAT MESSAGES /////////////////////////////
 
 router.delete(
-    "/chats/:RoomId",
+    "/rooms/:RoomId",
     async (req: Request, res: Response) => {
         try {
             let {RoomId} = req.params;
@@ -221,7 +221,7 @@ router.delete(
 
 ////////////////////// READ CONVERSATION ///////////////////////////////
 router.put(
-    "/chats/read/:roomId/",
+    "/rooms/read/:roomId/",
     async (req: Request, res: Response) => {
         try {
             let { roomId} = req.params;
@@ -265,7 +265,7 @@ router.put(
 
 ////////////////////// GET USER STATUS ////////////////////////////////
 
-router.get("/Status/:userId", async (req: Request, res: Response) => {
+router.get("/status/:userId", async (req: Request, res: Response) => {
     try {
         let { userId } = req.params;
         const status = await Status.findOne({

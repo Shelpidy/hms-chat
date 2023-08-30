@@ -7,7 +7,7 @@ const sequelize = new Sequelize({
         process.env.ENV == "development"
             ? process.env.DB_HOST
             : process.env.PG_DB_HOST,
-    dialect: process.env.ENV == "development" ? "mysql" : "postgres",
+    dialect: process.env.ENV == "development" ? "postgres" : "postgres",
     database:
         process.env.ENV == "development"
             ? process.env.DB_NAME

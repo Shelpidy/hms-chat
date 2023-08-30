@@ -36,6 +36,7 @@
         "@types/ws": "^8.5.4",
         "prettier": "^2.8.8",
         "rimraf": "^5.0.0",
+        "sequelize-cli": "^6.6.1",
         "ts-node": "^10.9.1",
         "ts-node-dev": "^2.0.0",
         "typescript": "^5.0.4"
