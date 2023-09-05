@@ -7,6 +7,7 @@ import User from "../src/models/Users";
 import { ChatReturnType } from "../src/types/types";
 import { Server } from "socket.io";
 import router from "./controllers/ChatController";
+import proxyRouter from './controllers/ProxyController'
 import Status from "./models/Status";
 import Message from "./models/Messages";
 import { Op } from "sequelize";
@@ -20,6 +21,7 @@ app.use(express.json());
 app.use(cors());
 app.use(authorizeApiAccess)
 app.use(router);
+app.use(proxyRouter)
 
 
 const server = http.createServer(app);

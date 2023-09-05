@@ -321,7 +321,7 @@ router.get(
             if (chat) {
                 return res.status(responseStatusCode.OK).json(
                     getResponseBody(responseStatus.SUCCESS, "", {
-                        roomId: chat.getDataValue("RoomId"),
+                        roomId: chat.getDataValue("roomId"),
                     })
                 );
             }
@@ -331,7 +331,7 @@ router.get(
             });
             res.status(responseStatusCode.OK).json(
                 getResponseBody(responseStatus.SUCCESS, "", {
-                    roomId: newChat.getDataValue("RoomId"),
+                    roomId: newChat.getDataValue("roomId"),
                 })
             );
         } catch (error) {
