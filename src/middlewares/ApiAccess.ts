@@ -1,22 +1,24 @@
-import express from "express";
+import { Request, Response, NextFunction } from "express";
+import { jwtDecode } from "../utils/utils";
 
-
-const authorizeApiAccess = (
-    request: express.Request,
-    response: express.Response,
-    next: express.NextFunction
-) => {
-    const apiAccessKey = request.headers?.apiaccesskey;
-    console.log(apiAccessKey);
-    if (apiAccessKey === process.env.API_ACCESS_KEY) {
+export default async (request: Request, response: Response, next: NextFunction) => {
+    let { authorization } = request.headers;
+    let accessToken = authorization?.split(" ")[1];
+  
+    if (accessToken) {
+       let decodedData = await jwtDecode(accessToken)
+       console.log("Decoded Access Key",decodedData)
+       console.log(decodedData)
+        response.locals = {
+            userId:decodedData?.userId,
+            token:decodedData?.token
+        };
         next();
     } else {
+        response.locals = {
+            userId: "myUserId",
+            
+        };
         next();
-        // response.status(responseStatusCode.UNATHORIZED).json({
-        //     status: responseStatus.UNATHORIZED,
-        //     message: "Invalid or no API Access Key",
-        // });
     }
 };
-
-export default authorizeApiAccess;

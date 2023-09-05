@@ -1,6 +1,17 @@
 import User from "../models/Users";
-import bcrypt from "bcrypt"
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
 
+
+export async function jwtEncode(data: any) {
+    let encodedData = jwt.sign(data, process.env.APP_SECRET_KEY + "");
+    return encodedData;
+}
+
+export async function jwtDecode(token: string):Promise<any> {
+    let decodedData = jwt.decode(token);
+    return decodedData;
+}
 
 export async function hashData(_data: any) {
     let data = String(_data);

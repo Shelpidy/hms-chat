@@ -26,7 +26,7 @@ router.get(
             const { rows: chats, count } =
                 await Message.findAndCountAll({
                     where: { roomId },
-                    order: [["RoomId", "DESC"]],
+                    order: [["createdAt", "DESC"]],
                     limit: numberOfRecord,
                     offset: start,
                 });
@@ -53,7 +53,7 @@ router.get(
                             )?.getDataValue("profileImage") ?? "",
                     };
                     const formattedChat: ChatReturnType = {
-                        _id: chat.getDataValue("RoomId"),
+                        _id: chat.getDataValue("roomId"),
                         text: chat.getDataValue("text"),
                         image: chat.getDataValue("image"),
                         audio: chat.getDataValue("audio"),
@@ -67,13 +67,12 @@ router.get(
                     return formattedChat;
                 })
             );
-            res.status(200).json({ messages: formattedChats, count });
+            res.status(200).json({data:{messages: formattedChats, count }});
         } catch (error) {
             console.error(error);
             res.status(responseStatusCode.BAD_REQUEST).json({
                 status: responseStatus.ERROR,
-                data: error,
-                message: "Getting user chats Failed",
+                message: String(error),
             });
         }
     }
@@ -171,12 +170,12 @@ router.get(
 /////////////////////// DELETE CONVERSATION OR CHAT CLEAR USER CHAT MESSAGES /////////////////////////////
 
 router.delete(
-    "/rooms/:RoomId",
+    "/rooms/:roomId",
     async (req: Request, res: Response) => {
         try {
-            let {RoomId} = req.params;
+            let {roomId} = req.params;
             let chat = await Room.findOne({
-                where: { RoomId },
+                where: { roomId },
             });
             if (!chat) {
                 return res
@@ -184,13 +183,13 @@ router.delete(
                     .json(
                         getResponseBody(
                             responseStatus.ERROR,
-                            `Chat with id ${RoomId} does not exist.`,
+                            `Chat with id ${roomId} does not exist.`,
                             {}
                         )
                     );
             }
             let deleteRow = await Room.destroy({
-                where: { RoomId },
+                where: { roomId },
             });
             if (deleteRow >= 1) {
                 return res
@@ -227,7 +226,7 @@ router.put(
             let { roomId} = req.params;
             let { userId} = res.locals;
             let conversation = await Room.findOne({
-                where: { RoomId: roomId },
+                where: { roomId: roomId },
             });
             if (!conversation) {
                 return res
@@ -294,7 +293,7 @@ router.get("/status/:userId", async (req: Request, res: Response) => {
     }
 });
 
-//////////////////////  GET OR CREATE ROOMID ////////////////////////////
+//////////////////////  GET OR CREATE roomId ////////////////////////////
 router.get(
     "/room/:userIdOne/:userIdTwo",
     async (req: Request, res: Response) => {

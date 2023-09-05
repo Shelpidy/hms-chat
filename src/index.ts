@@ -101,14 +101,14 @@ socketIO.on("connection", async (socket) => {
                 audio: msgData?.audio,
                 video: msgData?.video,
                 otherFile: msgData?.otherFile,
-                roomId: msgData?.roomId,
+                roomId: msgData?.roomId || roomId,
                 sent: true,
                 received: false,  
                 pending: true,
             });
 
             let chat = await Room.findOne({
-                where: { id: roomId },
+                where: {roomId:msgData?.roomId || roomId},
             });
             if (chat) {
                 let initialSenderId = chat.getDataValue("senderId");
@@ -121,9 +121,10 @@ socketIO.on("connection", async (socket) => {
                 });
                 // check if the receiver have not opened the chat screen or is not on the chat screen
 
-                chat.setDataValue("recipientReadStatus", false);
+                await chat.update({"recipientReadStatus":false});
+
                 let unReadTextNo = chat.getDataValue("numberOfUnreadText");
-                if (initialSenderId == msgData.senderId) {
+                if (initialSenderId === msgData.senderId) {
                     console.log("From the same sender");
 
                     console.log("No of unread", unReadTextNo);
@@ -136,13 +137,11 @@ socketIO.on("connection", async (socket) => {
                                 by: 1,
                             });
                         } else {
-                            chat.setDataValue("numberOfUnreadText", 1);
+                            await chat.update({"numberOfUnreadText": 1});
                         }
-
-                        chat.setDataValue("recipientReadStatus", false);
+                        await chat.update({"recipientReadStatus":false});
                     } else {
-                        chat.setDataValue("numberOfUnreadText", null);
-                        chat.setDataValue("recipientReadStatus", true);
+                        await chat.update({"numberOfUnreadText":null,"recipientReadStatus":null});
                     }
                 } else {
                     if (
@@ -154,17 +153,17 @@ socketIO.on("connection", async (socket) => {
                                 by: 1,
                             });
                         } else {
-                            chat.setDataValue("numberOfUnreadText", 1);
+                            await chat.update({"numberOfUnreadText":1});
                         }
                     } else {
-                        chat.setDataValue("numberOfUnreadText", null);
-                        chat.setDataValue("recipientReadStatus", true);
+                        await chat.update({"numberOfUnreadText":null,"recipientReadStatus":null});
                     }
-                    chat.setDataValue("senderId", msgData.senderId);
-                    chat.setDataValue("recipientId", initialSenderId);
+
+                    await chat.update({"senderId":msgData.senderId,"recipientId":initialSenderId});
+                    // chat.setDataValue("recipientId", initialSenderId);
                 }
 
-                chat.setDataValue("lastText", msgData.text);
+                await chat.update({"lastText":msgData.text});
 
                 // chat.setDataValue("senderId",msgData.senderId)
             }
@@ -174,7 +173,7 @@ socketIO.on("connection", async (socket) => {
 
             if (message && recipient) {
                 const chatMessage: ChatReturnType = {
-                    _id: message.getDataValue("id"),
+                    _id: message.getDataValue("messageId"),
                     text: message.getDataValue("text"),
                     image: message.getDataValue("image"),
                     audio: message.getDataValue("audio"),
@@ -184,7 +183,7 @@ socketIO.on("connection", async (socket) => {
                     pending: message.getDataValue("pending"),
                     createdAt: message.getDataValue("createdAt"),
                     user: {
-                        _id: recipient?.getDataValue("id"),
+                        _id: recipient?.getDataValue("userId"),
                         name: recipient?.getFullname(),
                         avatar: recipient?.getDataValue("profileImage"),
                     },
