@@ -13,6 +13,18 @@ import Message from "./models/Messages";
 import { Op } from "sequelize";
 import authorizeApiAccess from "./middlewares/ApiAccess";
 import { runUserConsumer } from "./events/consumers";
+import NotificationService from "./services/notification_service";
+
+type NotificationData = {
+    token: string;
+    body: string;
+    title: string;
+    data: {
+        url: string;
+    };
+};
+
+const notification = new NotificationService()
 
 dotenv.config();
 // Create an Express app and HTTP server
@@ -189,6 +201,23 @@ socketIO.on("connection", async (socket) => {
                     },
                 };
                 socketIO.to(roomId).emit(roomId as string, chatMessage);
+
+                let notificationMsgs:NotificationData[] = []
+                for(let notToken of msgData.notificationTokens){
+                    let notificationMsg:NotificationData = {
+                        body:chatMessage.text,
+                        title:'',
+                        token:notToken,
+                        data:{
+                            url:`com.commodity.sl:/chat`}}
+                    notificationMsgs.push(notificationMsg)
+                }
+
+                notification.sendNotification(notificationMsgs).then(()=>{
+                    console.log("Notifaction Sent")
+                }).catch((err)=>{
+                    console.log(err)
+                })
                 console.log({ UpdatedConv: chat?.dataValues });
                 socket.to(roomId).emit("conversation", newChat);
             }
