@@ -10,7 +10,7 @@ let BROKER_3 = process.env.BROKER_3||''
 
 
 let kafka:Kafka = new Kafka({
-    brokers:[BROKER_1,BROKER_2],
+    brokers:[BROKER_1],
     clientId:process.env.SERVER_ID
 })
 

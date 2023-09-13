@@ -65,7 +65,9 @@ socketIO.on("connection", async (socket) => {
 
     if (roomId) {
         /// connect or join a room if users click on the chat button on the frontend///////////////
-        socket.join(`${roomId}`);
+        socket.join(String(roomId));
+        console.log(`User with Id ${userId} is joins room ${roomId}`);
+
     }
 
     if (userId) {
@@ -200,7 +202,7 @@ socketIO.on("connection", async (socket) => {
                         avatar: recipient?.getDataValue("profileImage"),
                     },
                 };
-                socketIO.to(roomId).emit(roomId as string, chatMessage);
+                socketIO.to(roomId).emit(String(roomId), chatMessage);
 
                 let notificationMsgs:NotificationData[] = []
                 for(let notToken of msgData.notificationTokens){

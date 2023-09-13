@@ -10,7 +10,7 @@ const BROKER_3 = process.env.BROKER_3 || "";
 const SERVER_ID = process.env.SERVER_ID || "";
 
 const kafka: Kafka = new Kafka({
-  brokers: [BROKER_1,BROKER_2],
+  brokers: [BROKER_1],
   clientId: SERVER_ID,
 });
 
@@ -24,7 +24,7 @@ export async function runUserConsumer() {
     console.log("Subscribing to topics...");
     await consumer.subscribe({
       topics: ["ADD_USER", "DELETE_USER", "UPDATE_USER","UPDATE_USER_VERIFICATION"],
-      fromBeginning: true,
+      fromBeginning:false,
     });
     console.log("Successfully subscribed to topics!");
 
