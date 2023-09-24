@@ -14,6 +14,7 @@ import { Op } from "sequelize";
 import authorizeApiAccess from "./middlewares/ApiAccess";
 import { runUserConsumer } from "./events/consumers";
 import NotificationService from "./services/notification_service";
+import axios from "axios";
 
 type NotificationData = {
     token: string;
@@ -102,7 +103,18 @@ socketIO.on("connection", async (socket) => {
 
     //// chat between users ////////////////////////////////////
 
-    socket.on(roomId as string, async (msgData: any) => {
+    type MessagePayload = {
+        senderId:string
+        recipientId:string
+        image?:string
+        audio?:string
+        video?:string
+        text?:string
+        roomId:string
+        otherFile:string
+    }
+
+    socket.on(String(roomId), async (msgData:MessagePayload) => {
         try {
             // console.log("From user 2");
             console.log(msgData);
@@ -203,25 +215,31 @@ socketIO.on("connection", async (socket) => {
                     },
                 };
                 socketIO.to(roomId).emit(String(roomId), chatMessage);
-
-                let notificationMsgs:NotificationData[] = []
-                for(let notToken of msgData.notificationTokens){
-                    let notificationMsg:NotificationData = {
-                        body:chatMessage.text,
-                        title:'',
-                        token:notToken,
-                        data:{
-                            url:`com.commodity.sl:/chat`}}
-                    notificationMsgs.push(notificationMsg)
-                }
-
-                notification.sendNotification(notificationMsgs).then(()=>{
-                    console.log("Notifaction Sent")
-                }).catch((err)=>{
-                    console.log(err)
-                })
                 console.log({ UpdatedConv: chat?.dataValues });
-                socket.to(roomId).emit("conversation", newChat);
+                socket.to(String(roomId)).emit("conversation", newChat);
+                
+                let {data,status} = await axios.get(`http://192.168.1.98:5000/notifications/token/${msgData.recipientId}`)
+                if(status === 200){
+                    let notificationTokens = data.data
+                    let notificationMsgs:NotificationData[] = []
+                    for(let notificationToken of notificationTokens){
+                        let notificationMsg:NotificationData = {
+                            body:chatMessage.text,
+                            title:'',
+                            token:notificationToken,
+                            data:{
+                                url:`com.commodity.sl:/chat`}}
+                        notificationMsgs.push(notificationMsg)
+                    }
+    
+                    notification.sendNotification(notificationMsgs).then(()=>{
+                        console.log("Notifaction Sent")
+                    }).catch((err)=>{
+                        console.log(err)
+                    })
+
+                }
+              
             }
 
             // socket.emit('test',JSON.stringify({text:"Welcome to my chat"}))
@@ -345,7 +363,7 @@ socketIO.on("connection", async (socket) => {
                     activeRoom: null,
                 });
                 console.log(`User with Id ${userId} is offline`);
-                socket.broadcast.emit("online", updatedStatus.dataValues);
+                socket.broadcast.emit(String(userId), updatedStatus.dataValues);
             } else {
             }
         } catch (err) {
