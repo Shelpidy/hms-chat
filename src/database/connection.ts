@@ -1,24 +1,9 @@
 import { Sequelize } from "sequelize";
-import dotenv from "dotenv";
-dotenv.config();
 
-const sequelize = new Sequelize({
-    host:
-        process.env.ENV == "development"
-            ? process.env.DB_HOST
-            : process.env.PG_DB_HOST,
-    dialect: process.env.ENV == "development" ? "postgres" : "postgres",
-    database:
-        process.env.ENV == "development"
-            ? process.env.DB_NAME
-            : process.env.PG_DB_NAME,
-    password:
-        process.env.ENV == "development"
-            ? process.env.DB_PASSWORD
-            : process.env.PG_DB_PASSWORD,
-    username:
-        process.env.ENV == "development"
-            ? process.env.DB_USERNAME
-            : process.env.PG_DB_USERNAME,
+const sequelize = new Sequelize("hmsdb", "root", "", {
+  host: "localhost",
+  dialect: "mysql",
+  dialectModule: require("mysql2"),
 });
+
 export default sequelize;

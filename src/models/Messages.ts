@@ -1,72 +1,63 @@
-import { Model, DataTypes } from "sequelize";
+import { Model, DataTypes, Optional, Sequelize } from "sequelize";
 import sequelize from "../database/connection";
 
-class Message extends Model {
-}
-
+class Message extends Model {}
 Message.init(
-    {
-        messageId: {
-            type: DataTypes.UUID,
-            allowNull: false,
-            primaryKey: true,
-            defaultValue:DataTypes.UUIDV4
-        },
-        senderId: {
-            type: DataTypes.UUID,
-            allowNull: false,
-        },
-        recipientId: {
-            type: DataTypes.UUID,
-            allowNull: false,
-        },
-        text: {
-            type: DataTypes.TEXT,
-        },
-        image: {
-            type: DataTypes.STRING,
-        },
-        audio: {
-            type: DataTypes.STRING,
-        },
-        video: {
-            type: DataTypes.STRING,
-        },
-        otherFile: {
-            type: DataTypes.STRING,
-        },
-        roomId: {
-            type: DataTypes.UUID,
-            references:{
-                model:"Rooms",
-                key:'roomId'
-            },
-            onDelete:"CASCADE",
-            onUpdate:"CASCADE"
-        },
-        sent: {
-            type: DataTypes.BOOLEAN,
-        },
-        received: {
-            type: DataTypes.BOOLEAN,
-        },
-        pending: {
-            type: DataTypes.BOOLEAN,
-        },
-        createdAt: {
-            allowNull: false,
-            type: DataTypes.DATE,
-        },
-        updatedAt: {
-            allowNull: true,
-            type: DataTypes.DATE,
-        },
+  {
+    messageId: {
+      allowNull: false,
+      primaryKey: true,
+      type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4,
     },
-    {
-        sequelize,
-        modelName: "Message",
-        tableName: "Messages",
-    }
+    message: {
+      type: DataTypes.TEXT,
+    },
+    roomId: {
+      allowNull: false,
+      type: DataTypes.UUID,
+      references: {
+        model: "Rooms",
+        key: "roomId",
+      },
+      onUpdate: "CASCADE",
+      onDelete: "CASCADE",
+    },
+    senderId: {
+      allowNull: false,
+      type: DataTypes.UUID,
+      references: {
+        model: "Users",
+        key: "userId",
+      },
+      onUpdate: "CASCADE",
+      onDelete: "CASCADE",
+    },
+    recipientId: {
+      allowNull: false,
+      type: DataTypes.UUID,
+      references: {
+        model: "Users",
+        key: "userId",
+      },
+      onUpdate: "CASCADE",
+      onDelete: "CASCADE",
+    },
+    createdAt: {
+      allowNull: false,
+      type: DataTypes.DATE,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+    },
+  },
+  {
+    sequelize,
+    modelName: "Message",
+    tableName: "Messages",
+    timestamps: false,
+    underscored: false,
+  },
 );
 
 export default Message;
