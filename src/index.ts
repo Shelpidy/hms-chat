@@ -6,8 +6,6 @@ import Room from "./models/Rooms";
 import User from "../src/models/Users";
 import { Server } from "socket.io";
 import Message from "./models/Messages";
-import { Op } from "sequelize";
-
 
 interface ReturnBubbleMessage {
     messageId: string;
@@ -35,8 +33,6 @@ app.use(cors());
 
 const server = http.createServer(app);
 
-
-
 const socketIO = new Server(server, {
     cors: { origin: "*", methods: ["GET", "POST"] },
     connectTimeout: 5000,
@@ -50,6 +46,7 @@ socketIO.on("connection", (socket) => {
     if(roomId) socket.join(roomId)
   
     socket.on("msg",async(data:BubbleMessage)=>{
+          console.log({msg:data})
           let createdMessage = await Message.create({
                ...data,
                createdAt:new Date()
@@ -83,8 +80,8 @@ socketIO.on("connection", (socket) => {
               date:createdMessage.getDataValue("createdAt"),
              }
   
-             socket.to(String(data.roomId || roomId)).emit(String(data.roomId || roomId),returnMessage)
-             socket.to(String(data.roomId || roomId)).emit("conversation",returnMessage)
+             socketIO.to(data.roomId).emit("msg",returnMessage)
+             socketIO.to(String(data.roomId)).emit("conversation",returnMessage)
             })
    
   
@@ -97,7 +94,6 @@ socketIO.on("connection", (socket) => {
       console.log("Recording",data)
       socket.broadcast.to(data.roomId || roomId).emit("recording",data)
     })
-  
   
     
     socket.on("activeRoom",(data:any)=>{
@@ -112,8 +108,6 @@ socketIO.on("connection", (socket) => {
     });
   });
   
-
-
 
 let PORT = process.env.PORT;
 server.listen(PORT, () => {
